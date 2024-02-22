@@ -33,18 +33,18 @@ class ConnectFour < BaseService
   alias_method :rows, :board
 
   def board_winner
-    directional_arrays.each_with_object(nil) do |arr, result|
-      ap []
-      result.presence || directional_winner(arr)
+    directional_arrays.each do |arr|
+      result = directional_winner(arr)
+      return result if result
     end
+
+    nil
   end
 
   def directional_winner(arr)
     return unless arr
 
-    arr.each_cons(CONS_TO_WIN).map do |a, b|
-      a if a.present? && a == b
-    end
+    arr.join.match(/(blue|red){4,}/)&.try(:[], 1)
   end
 
   def directional_arrays
@@ -52,7 +52,7 @@ class ConnectFour < BaseService
   end
 
   def columns
-    (1..width).to_a.map do |col|
+    (0..last_col_index).to_a.map do |col|
       rows.map {|row| row[col] }
     end
   end
@@ -61,9 +61,15 @@ class ConnectFour < BaseService
     # add largest breadth to allow for shorter runs on the edges
     # if the height is larger than the width, matches COULD occur at lower rows
     offset = height - CONS_TO_WIN
-    (-offset..width + offset).to_a.flat_map do |col|
-      [rtl_diagonal(col), ltr_diagonal(col)]
+    result = []
+    (-offset..width + offset).to_a.each do |col|
+      ltr = ltr_diagonal(col)
+      rtl = rtl_diagonal(col)
+      result << ltr if ltr.present?
+      result << rtl if rtl.present?
     end
+
+    result
   end
 
   def rtl_diagonal(col)
@@ -110,15 +116,14 @@ class ConnectFour < BaseService
 
   def add_to_column(col, color)
     top_col = top_of_column(col)
-    ap [:top_col, top_col]
     return "Incorrect color" if COLORS.exclude?(color.to_sym)
-    return ap "The ##{col} column is full!" if top_col == height
+    return ap "The ##{col} column is full!" if top_col < 0
 
     board[top_col][col] = color
     notify_winner
   end
 
-  # private
+  private
 
   def top_of_column(col)
     current_row = last_row_index
