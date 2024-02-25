@@ -1,4 +1,6 @@
-class ConnectFour < BaseService
+#!/usr/bin/env ruby
+
+class ConnectFour
   COLORS = %i[blue red]
   CONS_TO_WIN = 4
   attr_reader :width, :height
@@ -22,7 +24,7 @@ class ConnectFour < BaseService
   def notify_winner
     return unless winner = board_winner
 
-    ap "Congratulations, #{board_winner} wins!"
+    p "Congratulations, #{board_winner} wins!"
   end
 
   def board
@@ -35,6 +37,7 @@ class ConnectFour < BaseService
   def board_winner
     directional_arrays.each do |arr|
       result = directional_winner(arr)
+      p [:dirwinner, arr, result] if result
       return result if result
     end
 
@@ -44,7 +47,14 @@ class ConnectFour < BaseService
   def directional_winner(arr)
     return unless arr
 
-    arr.join.match(/(blue|red){4,}/)&.try(:[], 1)
+    red_win = arr.join.match?(/(red){4,}/)
+    blue_win = arr.join.match?(/(blue){4,}/)
+    p [:dirmatch, red_win, blue_win]
+    if red_win
+      "red"
+    elsif blue_win
+      "blue"
+    end
   end
 
   def directional_arrays
@@ -65,8 +75,8 @@ class ConnectFour < BaseService
     (-offset..width + offset).to_a.each do |col|
       ltr = ltr_diagonal(col)
       rtl = rtl_diagonal(col)
-      result << ltr if ltr.present?
-      result << rtl if rtl.present?
+      result << ltr if ltr.size
+      result << rtl if rtl.size
     end
 
     result
@@ -116,8 +126,8 @@ class ConnectFour < BaseService
 
   def add_to_column(col, color)
     top_col = top_of_column(col)
-    return "Incorrect color" if COLORS.exclude?(color.to_sym)
-    return ap "The ##{col} column is full!" if top_col < 0
+    return "Incorrect color" unless COLORS.include?(color.to_sym)
+    return p "The ##{col} column is full!" if top_col < 0
 
     board[top_col][col] = color
     notify_winner
@@ -129,7 +139,7 @@ class ConnectFour < BaseService
     current_row = last_row_index
 
     while current_row >= 0
-      break if rows[current_row][col].blank?
+      break if rows[current_row][col] == false
 
       current_row -= 1
     end
@@ -138,3 +148,24 @@ class ConnectFour < BaseService
   end
 
 end
+
+p [:prepping]
+cf = ConnectFour.new
+cf.add_to_column 2, :blue
+cf.add_to_column 2, :blue
+cf.add_to_column 2, :blue
+cf.add_to_column 2, :blue
+p [:colwinner, cf.board_winner, cf.board]
+
+cf = ConnectFour.new
+cf.add_to_column 0, :blue
+cf.add_to_column 1, :red
+cf.add_to_column 1, :blue
+cf.add_to_column 2, :red
+cf.add_to_column 2, :red
+cf.add_to_column 2, :blue
+cf.add_to_column 3, :blue
+cf.add_to_column 3, :red
+cf.add_to_column 3, :red
+cf.add_to_column 3, :blue
+p [:diagonalwin, cf.board_winner, cf.board]
