@@ -26,87 +26,64 @@
 # The program should determine the value of T1.
 class SequentialCalculator
 
-  attr_reader :equations 
-  VAR_KEY = "T"
+  attr_reader :equations, :solved_keys 
   OPERATORS = %w[- +]
 
   def initialize(equations)
     @equations = equations
-  end
+    @solved_keys = []
 
-  def process!
-  end
-
-  def equation_matrix
-    @equation_matrix ||= equations.map do |equation|
-      equation.gsub(/\s/, '').split('=')
+    while incomplete?
+      resolve_solveable_values!
     end
   end
 
   def solutions
-    @solutions ||= {}
-  end
-
-  def single_value_location
-    equation_matrix.each_with_index do |row, row_index|
-      row.each_with_index do |col, col_index|
-        next if col.to_i.zero?
-
-        return [row_index, col_index]
+    @solutions ||= equations.each_with_object({}) do |equation, acc|
+      key, formula = equation.gsub(/\s/, '').split('=')
+      if number?(formula)
+        formula = formula.to_i 
+        solved_keys << key
       end
+
+      acc[key] = formula
     end
   end
 
-  def process_single_value
-    row, col = single_value_location
-    formula_index = col == 0 ? 1 : 0
-    answer = equation_matrix[row][col].to_i
-    formula = equation_matrix[row][formula_index]
-    solutions[formula] = answer
+  def resolve_solveable_values!
+    solutions.each do |(key, value)|
+      next if number?(value)
+      next unless solveable?(value)
+
+      solutions[key] = solve(value)
+      solved_keys << key
+    end
   end
 
-  def calculate(val, answer)
-    formula = val.gsub(" ", "").split(/([?\-\+])/)
-    a_val, op, b_val = formula
-    
-    if number?(a_val)
-    elsif number?(b_val)
-    end
+  def solveable?(value)
+    value.match?(solved_keys.join("|"))
+  end
 
-    formula.each_with_index do |val, i|
-      next if OPERATORS.include? val
-      
-      b_val = render_value(formula[i+1]) # could be location, or int
-      
-      result += process_formula(result, formula[i], b_val)
+  def solve(value)
+    key = value.match("(#{solved_keys.join('|')})").captures.first
+    result = value.gsub(key, solutions[key].to_s) # avoids string interpolation issue
+    a_val, b_val = result.split(/[\+\-]/).map(&:to_i)
+    return a_val if b_val.blank?
+
+    if value.match?(/\+/)
+      a_val + b_val
+    else
+      a_val - b_val
     end
-    
-    result
   end
 
   def number?(str)
+    return true if str.is_a?(Integer)
+
     str.match?(/\A[\d]+\z/)
   end
 
-  def divide(str, result)
-    match_value = str.match(/\A#{VAR_KEY}([\d]*)/)
-    mult = match_value.captures.first.to_i
-
-    result.to_f / mult.to_f
-  end
-
-  def process_formula(a, op, b)
-    case op
-    when "-"
-      a - b
-    when "+"
-      a + b
-    when "/"
-      a / b
-    when "*"
-      a * b
-    else
-      raise "Invalid Operator: #{op}"
-    end
+  def incomplete?
+    solved_keys.length < solutions.keys.length
   end
 end
